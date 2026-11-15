@@ -4,7 +4,7 @@
 The shopkeeper presses one big button and speaks in Hindi or Hinglish. Bol Khata writes the entry, speaks it back for confirmation, sends a UPI payment reminder and the supplier order on WhatsApp. No typing needed.
 
 > VibeX Codes Hackathon · Track 1: Helping Daily Workers, Small Shopkeepers (Chaiwalas) & Office Workers
-> **Team Asur Coders:** Aum Sorathiya · Jeet Pastagia · Harikrushna Ghadiya · Divyesh Shukla
+> **Team Asur Coders** (see [Team](#team) below)
 
 **Live app:** https://bol-khata-app-india.vercel.app · **Video:** _add link_
 
@@ -108,6 +108,17 @@ git push -u origin main
 3. Click **Deploy**. Open the link in **Chrome on your phone**, allow the microphone, then use **⋮ → Add to Home screen**.
 
 The first load fills the database with the starter shop "Raju Chai Stall". Open **⚙️ Settings** to check that the database shows "Supabase se juda" (connected) and to see which AI providers are active.
+
+## Team
+
+**Asur Coders**
+
+| Member | GitHub | Role |
+|---|---|---|
+| Jeet Pastagia | [@jeetpastagia](https://github.com/jeetpastagia) | TBD |
+| Aum Sorathiya | [@AumSorathiya](https://github.com/AumSorathiya) | TBD |
+| Harikrushna Ghadiya | [@HariKrushna-Gadhiya](https://github.com/HariKrushna-Gadhiya) | TBD |
+| Divyesh Shukla | _GitHub link coming soon_ | TBD |
 
 ## Known limits (honest list for the judges)
 - Browser speech recognition works best in **Chrome**. In other browsers, use the text box.
