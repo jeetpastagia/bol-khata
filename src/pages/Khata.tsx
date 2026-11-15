@@ -115,7 +115,7 @@ function CustomerSheet({ c, onClose }: { c: Customer; onClose: () => void }) {
         {bal > 0 && (
           <div className="grid grid-cols-2 gap-2">
             <Btn tone="kesar" onClick={() => setShowQr((s) => !s)}>💰 Paise maango</Btn>
-            <Btn tone="patti" href={waLink(c.phone, reminderText(data.shop, c, bal))}>📲 WhatsApp</Btn>
+            <Btn tone="patti" href={waLink(c.phone, reminderText(data.shop, c, bal))}>💬 WhatsApp</Btn>
           </div>
         )}
         {showQr && bal > 0 && (

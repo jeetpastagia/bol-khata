@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { GearIcon } from "./components/ui";
 import { StoreProvider, useStore } from "./lib/store";
 import Bolo from "./pages/Bolo";
 import Khata from "./pages/Khata";
@@ -9,11 +10,11 @@ import CustomerView from "./pages/CustomerView";
 import { balancePaise, rupees } from "./lib/ledger";
 
 type Tab = "bolo" | "khata" | "order" | "hisaab" | "settings";
-const TABS: { id: Tab; icon: string; label: string }[] = [
+const TABS: { id: Tab; icon: ReactNode; label: string }[] = [
   { id: "bolo", icon: "🎙️", label: "Bolo" },
   { id: "khata", icon: "📒", label: "Khata" },
   { id: "order", icon: "📦", label: "Order" },
-  { id: "hisaab", icon: "📊", label: "Hisaab" },
+  { id: "hisaab", icon: "🧾", label: "Hisaab" },
 ];
 
 export default function App() {
@@ -46,7 +47,7 @@ function Shell() {
         <p className="text-xl font-bold text-haldi">बोल खाता</p>
         <p className="mt-1 text-sm text-cream/70">{data.shop.name}</p>
         <nav className="mt-8 flex flex-col gap-1.5">
-          {[...TABS, { id: "settings" as Tab, icon: "⚙️", label: "Settings" }].map((t) => (
+          {[...TABS, { id: "settings" as Tab, icon: <GearIcon className="h-7 w-7" />, label: "Settings" }].map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 text-left text-lg font-bold transition ${tab === t.id ? "bg-kesar text-white" : "text-cream/85 hover:bg-white/10"}`}>
               <span className="text-2xl">{t.icon}</span>
@@ -73,7 +74,7 @@ function Shell() {
                 <h1 className="text-2xl font-extrabold leading-tight">Bol Khata <span className="text-haldi">बोल खाता</span></h1>
                 <p className="text-sm text-cream/80">{data.shop.name} · {statusText(status)}</p>
               </div>
-              <button onClick={() => setTab("settings")} className="rounded-full bg-white/10 px-3 py-2 text-xl" aria-label="Settings">⚙️</button>
+              <button onClick={() => setTab("settings")} className="rounded-full bg-white/10 px-3 py-2 text-xl" aria-label="Settings"><GearIcon /></button>
             </div>
             <div className="mt-2 rounded-xl bg-white/10 px-3 py-1.5 text-center">
               Bazaar mein baaki: <b className="text-xl text-haldi">{rupees(total)}</b>
@@ -84,7 +85,7 @@ function Shell() {
         {/* Page title (laptop) */}
         <div className="hidden border-b border-line px-8 py-5 lg:block">
           <h2 className="text-3xl font-extrabold text-chai">
-            {[...TABS, { id: "settings", icon: "⚙️", label: "Settings" }].find((t) => t.id === tab)?.icon}{" "}
+            <span className="inline-flex align-middle text-chai">{[...TABS, { id: "settings", icon: <GearIcon className="h-8 w-8" />, label: "Settings" }].find((t) => t.id === tab)?.icon}</span>{" "}
             {{ bolo: "Bolo — awaaz se likho", khata: "Khata", order: "Supplier order", hisaab: "Hisaab", settings: "Settings" }[tab]}
           </h2>
         </div>
@@ -94,7 +95,7 @@ function Shell() {
             <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-8 2xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
               <Bolo />
               <section className="hidden lg:block">
-                <h3 className="mb-3 text-xl font-bold text-chai">📊 Aaj ki dukaan</h3>
+                <h3 className="mb-3 text-xl font-bold text-chai">🧾 Aaj ki dukaan</h3>
                 <Hisaab />
               </section>
             </div>

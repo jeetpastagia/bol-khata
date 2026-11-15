@@ -58,13 +58,13 @@ export default function Orders() {
           </ul>
           <Btn tone="patti" className="w-full" href={waLink(supplier?.phone, supplierOrderText(data.shop, supplier, items))}
             onClick={() => commit(items.map((i) => ({ table: "order_items" as const, row: { ...i, status: "sent" } })))}>
-            📲 WhatsApp par bhejo
+            💬 WhatsApp par bhejo
           </Btn>
         </Card>
       ))}
       </div>
 
-      {lastSentDate && <Btn tone="soft" className="@2xl:self-start" onClick={repeatLast}>🔁 Pichla order kal ke liye dobara</Btn>}
+      {lastSentDate && <Btn tone="soft" className="@2xl:self-start" onClick={repeatLast}>↻ Pichla order kal ke liye dobara</Btn>}
 
       {sent.length > 0 && (
         <div className="@2xl:max-w-xl">

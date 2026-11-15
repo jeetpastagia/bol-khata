@@ -62,7 +62,7 @@ export default function Hisaab() {
             <div className="text-xl font-extrabold text-mirchi">{rupees(bal)}</div>
           </div>
           <a href={waLink(c.phone, reminderText(data.shop, c, bal))} target="_blank" rel="noreferrer"
-            className="rounded-2xl bg-patti px-4 py-3 font-bold text-white no-underline">📲 Yaad dilao</a>
+            className="rounded-2xl bg-patti px-4 py-3 font-bold text-white no-underline">💬 Yaad dilao</a>
         </div>
       ))}
       </div>

@@ -63,5 +63,5 @@ export default function Settings() {
 }
 
 export function statusText(s: string) {
-  return ({ synced: "✅ Sab save", pending: "⏳ Bhej raha hai", offline: "📴 Offline (baad mein sync hoga)", local: "📱 Local mode", syncing: "🔄 Sync ho raha hai", error: "⚠️ Sync nahi hua, dobara koshish hogi" } as Record<string, string>)[s] ?? s;
+  return ({ synced: "✅ Sab save", pending: "⏳ Bhej raha hai", offline: "📴 Offline (baad mein sync hoga)", local: "📱 Local mode", syncing: "⏳ Sync ho raha hai", error: "⚠️ Sync nahi hua, dobara koshish hogi" } as Record<string, string>)[s] ?? s;
 }

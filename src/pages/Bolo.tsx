@@ -199,7 +199,7 @@ export default function Bolo() {
             {phase.plan.steps.map((s, i) => s.kind === "money" ? (
               <div key={i} className={`rounded-xl p-3 ${s.type === "credit" ? "bg-mirchi-soft" : "bg-patti-soft"}`}>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xl font-extrabold">👤 {s.customer.name}{s.isNew && <span className="ml-2 rounded bg-haldi px-1.5 text-xs">NAYA</span>}</span>
+                  <span className="flex items-center gap-2 text-xl font-extrabold"><span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-kesar text-base text-white">{s.customer.name.charAt(0)}</span>{s.customer.name}{s.isNew && <span className="ml-2 rounded bg-haldi px-1.5 text-xs">NAYA</span>}</span>
                   <span className={`text-2xl font-extrabold ${s.type === "credit" ? "text-mirchi" : "text-patti"}`}>
                     {s.type === "credit" ? "+" : "−"}{rupees(s.amount_paise)}
                   </span>
@@ -243,7 +243,7 @@ export default function Bolo() {
             return (
               <div key={id} className="mt-3 flex flex-wrap gap-2">
                 <Btn tone="patti" href={waLink(c.phone, pakkaHisaabText(data.shop, c, t, bal))}>
-                  📲 {c.name} ko Pakka Hisaab bhejo
+                  💬 {c.name} ko Pakka Hisaab bhejo
                 </Btn>
                 {!c.phone && <span className="self-center text-sm text-chai-soft">(Khata mein phone number jodein)</span>}
               </div>
