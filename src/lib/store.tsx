@@ -65,6 +65,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const queueRef = useRef(queue);
   queueRef.current = queue;
   const syncing = useRef(false);
+  const syncNowRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => save(DATA_KEY, data), [data]);
   useEffect(() => save(QUEUE_KEY, queue), [queue]);
@@ -99,10 +100,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setStatus(leftover.length ? "pending" : "synced");
     } catch {
       setStatus(navigator.onLine ? "error" : "offline");
+      // Network often isn't ready the instant it comes back: retry soon instead of waiting 20 s
+      if (navigator.onLine && queueRef.current.length) setTimeout(() => void syncNowRef.current?.(), 3000);
     } finally {
       syncing.current = false;
     }
   }, []);
+
+  syncNowRef.current = syncNow;
 
   const commit = useCallback((ops: SyncOp[]) => {
     setData((d) => ops.reduce(applyOp, d));

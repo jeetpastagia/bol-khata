@@ -88,3 +88,50 @@ export function speak(text: string) {
 export function stopSpeaking() {
   try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
 }
+
+/**
+ * Hands-free listening: keeps the mic open and restarts Chrome's recognizer whenever it stops
+ * (Chrome ends a session after silence or about a minute). Only works while the app is on screen.
+ */
+export function listenLoop(opts: {
+  lang: string;
+  onPartial?: (text: string) => void;
+  onFinal: (text: string) => void;
+  onError?: (code: string) => void;
+}): Listener | null {
+  const C = Ctor();
+  if (!C) return null;
+  let running = true;
+  let rec: Rec | null = null;
+  let failures = 0;
+  const start = () => {
+    if (!running) return;
+    rec = new C();
+    rec.lang = opts.lang;
+    rec.interimResults = true;
+    rec.continuous = true;
+    rec.maxAlternatives = 1;
+    rec.onresult = (e) => {
+      failures = 0;
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) opts.onFinal(r[0].transcript.trim());
+        else interim += r[0].transcript;
+      }
+      if (interim) opts.onPartial?.(interim.trim());
+    };
+    rec.onerror = (e) => {
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") { running = false; opts.onError?.(e.error); return; }
+      if (e.error !== "no-speech" && e.error !== "aborted") failures++;
+    };
+    rec.onend = () => {
+      if (!running) return;
+      // Back off a little if the recognizer keeps failing (e.g. no internet)
+      setTimeout(start, Math.min(5000, 250 + failures * 1000));
+    };
+    try { rec.start(); } catch { setTimeout(start, 1000); }
+  };
+  start();
+  return { stop: () => { running = false; try { rec?.abort(); } catch { /* already stopped */ } } };
+}

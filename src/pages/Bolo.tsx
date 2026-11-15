@@ -5,8 +5,9 @@ import { waLink, upiLink } from "../lib/links";
 import { pakkaHisaabText, reminderText } from "../lib/messages";
 import { parseRules } from "../lib/parseRules";
 import { buildPlan, dateFor, planReply, planToOps, type Plan } from "../lib/plan";
-import { listen, speechSupported, stopSpeaking, type Listener } from "../lib/speech";
-import { BCP47, PHRASES, loadVoiceSettings, replyLangFor, speakSay, type Lang } from "../lib/voice";
+import { listen, listenLoop, speechSupported, stopSpeaking, type Listener } from "../lib/speech";
+import { afterWakeWord, yesOrNo } from "../lib/wake";
+import { BCP47, PHRASES, isAppSpeaking, loadVoiceSettings, replyLangFor, speakSay, type Lang } from "../lib/voice";
 import { useStore } from "../lib/store";
 import type { ParsedAction, Txn } from "../lib/types";
 
@@ -58,6 +59,13 @@ export default function Bolo() {
   const autoTimer = useRef<number | null>(null);
   const dataRef = useRef(data);
   dataRef.current = data;
+  const [handsFree, setHandsFree] = useState<boolean>(() => {
+    try { return localStorage.getItem("bolkhata.handsfree") === "1"; } catch { return false; }
+  });
+  const awaitingRef = useRef(false);     // wake word heard, waiting for the command
+  const awaitTimer = useRef<number | null>(null);
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
   const langRef = useRef<Lang>(loadVoiceSettings().replyLang === "auto" ? loadVoiceSettings().inputLang : (loadVoiceSettings().replyLang as Lang));
 
   const clearAuto = () => {
@@ -146,9 +154,92 @@ export default function Bolo() {
   }, [handleTranscript]);
 
   const toggleMic = useCallback(() => {
+    if (handsFreeRef.current) { wakeNowRef.current(); return; }
     if (listener.current) { listener.current.stop(); return; }
     startListening();
   }, [startListening]);
+
+  // ---------- Hands-free mode: say "Bol Khata" to wake the mic ----------
+  const handsFreeRef = useRef(handsFree);
+  handsFreeRef.current = handsFree;
+  const confirmRef = useRef(confirm);
+  confirmRef.current = confirm;
+  const handleRef = useRef(handleTranscript);
+  handleRef.current = handleTranscript;
+
+  const stopAwaiting = () => {
+    awaitingRef.current = false;
+    if (awaitTimer.current) window.clearTimeout(awaitTimer.current);
+    awaitTimer.current = null;
+  };
+  const wakeNowRef = useRef(() => {});
+  wakeNowRef.current = () => {
+    clearAuto();
+    awaitingRef.current = true;
+    speakSay(PHRASES.wake, langRef.current);
+    setPhase({ name: "listening", partial: "" });
+    if (awaitTimer.current) window.clearTimeout(awaitTimer.current);
+    // Nothing said within 10 s: go back to waiting for the wake word
+    awaitTimer.current = window.setTimeout(() => {
+      stopAwaiting();
+      if (phaseRef.current.name === "listening") setPhase({ name: "idle" });
+    }, 10000);
+  };
+
+  useEffect(() => {
+    try { localStorage.setItem("bolkhata.handsfree", handsFree ? "1" : "0"); } catch { /* ignore */ }
+    if (!handsFree) return;
+    if (!speechSupported()) {
+      setHandsFree(false);
+      setPhase({ name: "done", display: "Is browser mein awaaz support nahi hai. Chrome kholiye.", txnIds: [], isError: true });
+      return;
+    }
+    listener.current?.stop();
+    listener.current = null;
+
+    // Keep the screen on while waiting for "Bol Khata"
+    let lock: { release: () => Promise<void> } | null = null;
+    const wl = (navigator as unknown as { wakeLock?: { request: (t: "screen") => Promise<{ release: () => Promise<void> }> } }).wakeLock;
+    const getLock = () => wl?.request("screen").then((l) => { lock = l; }).catch(() => {});
+    void getLock();
+    const onVis = () => { if (document.visibilityState === "visible") void getLock(); };
+    document.addEventListener("visibilitychange", onVis);
+
+    const loop = listenLoop({
+      lang: BCP47[loadVoiceSettings().inputLang],
+      onPartial: (t) => {
+        if (awaitingRef.current && !isAppSpeaking()) setPhase({ name: "listening", partial: t });
+      },
+      onFinal: (text) => {
+        if (!text || isAppSpeaking()) return; // ignore our own voice
+        const ph = phaseRef.current;
+        if (ph.name === "confirm") {
+          const yn = yesOrNo(afterWakeWord(text) ?? text);
+          if (yn === "yes") { confirmRef.current(ph); return; }
+          if (yn === "no") { clearAuto(); speakSay(PHRASES.cancelled, langRef.current); setPhase({ name: "idle" }); return; }
+        }
+        if (awaitingRef.current) {
+          stopAwaiting();
+          void handleRef.current(afterWakeWord(text) ?? text);
+          return;
+        }
+        const rest = afterWakeWord(text);
+        if (rest === null) return; // no wake word: ignore normal shop talk
+        if (rest.split(/\s+/).filter(Boolean).length >= 2) void handleRef.current(rest); // "Bol Khata, Ramesh ka 40 likho"
+        else wakeNowRef.current();
+      },
+      onError: () => {
+        setHandsFree(false);
+        setPhase({ name: "done", display: "Mic ki permission dijiye (address bar mein 🔒 dabayein).", txnIds: [], isError: true });
+      },
+    });
+    return () => {
+      loop?.stop();
+      stopAwaiting();
+      document.removeEventListener("visibilitychange", onVis);
+      void lock?.release().catch(() => {});
+    };
+  }, [handsFree]);
 
   // Space bar = mic button (also works with many Bluetooth earphone/clicker buttons mapped to keys)
   useEffect(() => {
@@ -163,7 +254,7 @@ export default function Bolo() {
     return () => window.removeEventListener("keydown", onKey);
   }, [toggleMic]);
 
-  useEffect(() => () => { clearAuto(); listener.current?.stop(); }, []);
+  useEffect(() => () => { clearAuto(); listener.current?.stop(); stopAwaiting(); }, []);
 
   const recent = [...data.transactions].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5);
   const listening = phase.name === "listening";
@@ -182,8 +273,20 @@ export default function Bolo() {
           <span className="mt-2 text-2xl font-extrabold">{listening ? "Bas" : "Bolo"}</span>
         </button>
         <p className="text-center text-chai-soft">
-          {listening ? "Sun raha hoon… bolke 'Bas' dabaiye" : "Dabaiye aur Hindi mein boliye"}
+          {handsFree
+            ? listening ? "Haan ji, boliye…" : "Bas boliye: “Bol Khata”, phir apni baat"
+            : listening ? "Sun raha hoon… bolke 'Bas' dabaiye" : "Dabaiye aur Hindi mein boliye"}
         </p>
+        <button type="button" role="switch" aria-checked={handsFree} onClick={() => setHandsFree((h) => !h)}
+          className={`flex w-full max-w-sm items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left transition ${handsFree ? "border-patti bg-patti-soft" : "border-line bg-white/70"}`}>
+          <span className={`relative h-7 w-12 shrink-0 rounded-full transition ${handsFree ? "bg-patti" : "bg-line"}`}>
+            <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${handsFree ? "left-[1.4rem]" : "left-0.5"}`} />
+          </span>
+          <span className="flex flex-col">
+            <span className="font-bold text-chai">Haath-free mode{handsFree && <span className="ml-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-patti align-middle" />}</span>
+            <span className="text-sm text-chai-soft">{handsFree ? "Sun raha hai… “Bol Khata” bolkar shuru karein" : "“Bol Khata” bolo, mic apne aap khulega"}</span>
+          </span>
+        </button>
       </div>
 
       {/* Live / result panel */}

@@ -91,3 +91,16 @@ describe("Voice reply language", async () => {
     ["Write 40 rupees for Ramesh", "en"], ["How much does Suresh owe", "en"],
   ])("%s -> %s", (t, l) => expect(detectLang(t)).toBe(l));
 });
+
+describe("Wake word", async () => {
+  const { afterWakeWord, yesOrNo } = await import("../src/lib/wake");
+  it.each([
+    ["Bol Khata", ""], ["bol khata, Ramesh ka 40 likho", "Ramesh ka 40 likho"], ["बोल खाता रमेश का 40", "रमेश का 40"],
+    ["Hello Khata", ""], ["hey khata Suresh ne 100 diye", "Suresh ne 100 diye"], ["બોલ ખાતા", ""],
+  ])("%s -> '%s'", (t, rest) => expect(afterWakeWord(t)).toBe(rest));
+  it.each(["Ramesh bhai kal aana", "chai do", "ae bhai sun", "khata kholo"])("ignores: %s", (t) => expect(afterWakeWord(t)).toBeNull());
+  it("yes / no", () => {
+    expect(yesOrNo("haan")).toBe("yes"); expect(yesOrNo("हाँ ठीक है")).toBe("yes"); expect(yesOrNo("theek hai")).toBe("yes");
+    expect(yesOrNo("nahi")).toBe("no"); expect(yesOrNo("नहीं")).toBe("no"); expect(yesOrNo("Ramesh ka 40")).toBeNull();
+  });
+});

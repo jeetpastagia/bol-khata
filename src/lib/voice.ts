@@ -91,6 +91,8 @@ export function speakSay(say: Say, lang: Lang, s = loadVoiceSettings()) {
     if (voice) u.voice = voice;
     u.pitch = pitch;
     u.rate = 1.02;
+    lastSpeechEnd = Date.now() + 60_000; // until onend fires
+    u.onend = u.onerror = () => { lastSpeechEnd = Date.now(); };
     synth.speak(u);
   } catch {
     /* speech output is optional */
@@ -102,8 +104,16 @@ if (typeof window !== "undefined" && window.speechSynthesis) {
   window.speechSynthesis.getVoices();
 }
 
+let lastSpeechEnd = 0;
+/** True while the app is talking (and just after), so hands-free mode doesn't hear its own voice. */
+export function isAppSpeaking(): boolean {
+  return !!window.speechSynthesis?.speaking || Date.now() - lastSpeechEnd < 900;
+}
+
 // ---------- Fixed phrases ----------
 export const PHRASES = {
+  wake: { hi: "हाँ जी, बोलिए।", en: "Yes, go ahead.", gu: "હા, બોલો." },
+  cancelled: { hi: "ठीक है, नहीं लिखा।", en: "Okay, not saved.", gu: "બરાબર, નથી લખ્યું." },
   saved: { hi: "सेव हो गया।", en: "Saved.", gu: "સેવ થઈ ગયું." },
   undone: { hi: "पिछली एंट्री हटा दी।", en: "Removed the last entry.", gu: "છેલ્લી એન્ટ્રી હટાવી દીધી." },
   entryRemoved: { hi: "एंट्री हटा दी।", en: "Entry removed.", gu: "એન્ટ્રી હટાવી દીધી." },
