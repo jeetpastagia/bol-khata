@@ -224,6 +224,7 @@ export default function Bolo() {
       onFinal: (text) => {
         if (!text || isAppSpeaking()) return; // ignore our own voice
         const ph = phaseRef.current;
+        if (ph.name === "thinking") return; // still working on the last command
         if (ph.name === "confirm") {
           const yn = yesOrNo(afterWakeWord(text) ?? text);
           if (yn === "yes") { confirmRef.current(ph); return; }

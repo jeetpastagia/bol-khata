@@ -13,6 +13,9 @@ function Ctor(): (new () => Rec) | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
+/** Android Chrome repeats results in "continuous" mode, so we listen one sentence at a time there. */
+const isAndroid = () => typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+
 export const speechSupported = () => typeof window !== "undefined" && !!Ctor();
 
 export interface Listener {
@@ -31,7 +34,7 @@ export function listen(opts: {
   const rec = new C();
   rec.lang = opts.lang ?? "hi-IN";
   rec.interimResults = true;
-  rec.continuous = true;
+  rec.continuous = !isAndroid();
   rec.maxAlternatives = 1;
   let finalText = "";
   let interim = "";
@@ -104,19 +107,29 @@ export function listenLoop(opts: {
   let running = true;
   let rec: Rec | null = null;
   let failures = 0;
+  let lastFinal = "";
+  let lastFinalAt = 0;
   const start = () => {
     if (!running) return;
     rec = new C();
     rec.lang = opts.lang;
     rec.interimResults = true;
-    rec.continuous = true;
+    rec.continuous = false; // one sentence per session, then restart: no repeated results
     rec.maxAlternatives = 1;
     rec.onresult = (e) => {
       failures = 0;
       let interim = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i];
-        if (r.isFinal) opts.onFinal(r[0].transcript.trim());
+        if (r.isFinal) {
+          const t = r[0].transcript.trim();
+          // Drop exact repeats of the sentence we just delivered
+          if (t && !(t === lastFinal && Date.now() - lastFinalAt < 4000)) {
+            lastFinal = t;
+            lastFinalAt = Date.now();
+            opts.onFinal(t);
+          }
+        }
         else interim += r[0].transcript;
       }
       if (interim) opts.onPartial?.(interim.trim());

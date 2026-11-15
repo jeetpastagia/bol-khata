@@ -85,15 +85,24 @@ export function speakSay(say: Say, lang: Lang, s = loadVoiceSettings()) {
     const order: Lang[] = [lang, "hi", "en"];
     const use = order.find((l) => hasVoice(l)) ?? lang;
     const { voice, pitch } = pickVoice(use, s.gender);
+    const text = say[use];
+    // Never say the same thing twice in a row (duplicate recognition results on Android)
+    const key = `${s.gender}|${text}`;
+    if (key === lastText && Date.now() - lastTextAt < 2500) return;
+    lastText = key;
+    lastTextAt = Date.now();
+    // Only one reply at a time: stop anything still playing or queued
     synth.cancel();
-    const u = new SpeechSynthesisUtterance(say[use]);
+    const token = ++speakToken;
+    const u = new SpeechSynthesisUtterance(text);
     u.lang = BCP47[use];
     if (voice) u.voice = voice;
     u.pitch = pitch;
     u.rate = 1.02;
     lastSpeechEnd = Date.now() + 60_000; // until onend fires
-    u.onend = u.onerror = () => { lastSpeechEnd = Date.now(); };
-    synth.speak(u);
+    u.onend = u.onerror = () => { if (token === speakToken) lastSpeechEnd = Date.now(); };
+    // Chrome on Android can drop or double an utterance spoken in the same tick as cancel()
+    setTimeout(() => { if (token === speakToken) synth.speak(u); }, 60);
   } catch {
     /* speech output is optional */
   }
@@ -105,6 +114,9 @@ if (typeof window !== "undefined" && window.speechSynthesis) {
 }
 
 let lastSpeechEnd = 0;
+let lastText = "";
+let lastTextAt = 0;
+let speakToken = 0;
 /** True while the app is talking (and just after), so hands-free mode doesn't hear its own voice. */
 export function isAppSpeaking(): boolean {
   return !!window.speechSynthesis?.speaking || Date.now() - lastSpeechEnd < 900;
