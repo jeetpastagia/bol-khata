@@ -83,3 +83,11 @@ describe("Matching, ledger, score", () => {
     expect(upiLink("raju@okaxis", "Raju Chai", 16000, "Udhaar")).toBe("upi://pay?pa=raju%40okaxis&pn=Raju%20Chai&am=160.00&cu=INR&tn=Udhaar");
   });
 });
+
+describe("Voice reply language", async () => {
+  const { detectLang } = await import("../src/lib/voice");
+  it.each([
+    ["Ramesh ka 40 likho", "hi"], ["रमेश का चालीस", "hi"], ["રમેશના 40 લખો", "gu"],
+    ["Write 40 rupees for Ramesh", "en"], ["How much does Suresh owe", "en"],
+  ])("%s -> %s", (t, l) => expect(detectLang(t)).toBe(l));
+});

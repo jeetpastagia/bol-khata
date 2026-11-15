@@ -5,7 +5,8 @@ import { waLink, upiLink } from "../lib/links";
 import { pakkaHisaabText, reminderText } from "../lib/messages";
 import { parseRules } from "../lib/parseRules";
 import { buildPlan, dateFor, planReply, planToOps, type Plan } from "../lib/plan";
-import { listen, speak, speechSupported, stopSpeaking, type Listener } from "../lib/speech";
+import { listen, speechSupported, stopSpeaking, type Listener } from "../lib/speech";
+import { BCP47, PHRASES, loadVoiceSettings, replyLangFor, speakSay, type Lang } from "../lib/voice";
 import { useStore } from "../lib/store";
 import type { ParsedAction, Txn } from "../lib/types";
 
@@ -57,6 +58,7 @@ export default function Bolo() {
   const autoTimer = useRef<number | null>(null);
   const dataRef = useRef(data);
   dataRef.current = data;
+  const langRef = useRef<Lang>(loadVoiceSettings().replyLang === "auto" ? loadVoiceSettings().inputLang : (loadVoiceSettings().replyLang as Lang));
 
   const clearAuto = () => {
     if (autoTimer.current) window.clearTimeout(autoTimer.current);
@@ -73,7 +75,7 @@ export default function Bolo() {
     }
     commit([{ table: "transactions", row: { ...last, voided: true } }]);
     const c = dataRef.current.customers.find((x) => x.id === last.customer_id);
-    speak("पिछली एंट्री हटा दी।");
+    speakSay(PHRASES.undone, langRef.current);
     setPhase({ name: "done", display: `Pichli entry hata di: ${c?.name ?? ""} ${rupees(last.amount_paise)}. (History mein kati hui dikhegi)`, txnIds: [] });
   }, [commit]);
 
@@ -81,7 +83,7 @@ export default function Bolo() {
     clearAuto();
     const { ops, txnIds } = planToOps(p.plan, p.transcript);
     commit(ops);
-    speak("सेव हो गया।");
+    speakSay(PHRASES.saved, langRef.current);
     setPhase({ name: "done", display: "✅ Save ho gaya. " + p.display, txnIds });
   }, [commit]);
 
@@ -89,6 +91,7 @@ export default function Bolo() {
     const transcript = raw.trim();
     if (!transcript) { setPhase({ name: "idle" }); return; }
     setPhase({ name: "thinking", transcript });
+    langRef.current = replyLangFor(transcript);
     const d = dataRef.current;
     let actions: ParsedAction[];
     let source = "offline";
@@ -106,16 +109,16 @@ export default function Bolo() {
       const ins = plan.instant;
       if (ins.kind === "undo") return undoLast();
       if (ins.kind === "say") {
-        speak(ins.speech);
+        speakSay(ins.speech, langRef.current);
         setPhase({ name: "done", display: ins.display, txnIds: [] });
         return;
       }
-      speak("इन लोगों को रिमाइंडर भेजिए।");
+      speakSay(PHRASES.reminders, langRef.current);
       setPhase({ name: "done", display: `${rupees(ins.minPaise)} se zyada baaki walon ko reminder bhejiye:`, txnIds: [], reminderMin: ins.minPaise });
       return;
     }
     const reply = planReply(plan);
-    speak(reply.speech);
+    speakSay(reply.speech, langRef.current);
     const next: Extract<Phase, { name: "confirm" }> = { name: "confirm", transcript, plan, display: reply.display, source };
     setPhase(next);
     clearAuto();
@@ -131,6 +134,7 @@ export default function Bolo() {
     }
     setPhase({ name: "listening", partial: "" });
     listener.current = listen({
+      lang: BCP47[loadVoiceSettings().inputLang],
       onPartial: (partial) => setPhase({ name: "listening", partial }),
       onFinal: (text) => { listener.current = null; void handleTranscript(text); },
       onError: (code) => {
@@ -294,7 +298,7 @@ export default function Bolo() {
                 {!t.voided && (
                   <button
                     className="rounded-xl bg-cream-2 px-3 py-2 font-bold text-chai"
-                    onClick={() => { commit([{ table: "transactions", row: { ...t, voided: true } }]); speak("एंट्री हटा दी।"); }}
+                    onClick={() => { commit([{ table: "transactions", row: { ...t, voided: true } }]); speakSay(PHRASES.entryRemoved, langRef.current); }}
                     aria-label="Entry hatao"
                   >↶ Hatao</button>
                 )}

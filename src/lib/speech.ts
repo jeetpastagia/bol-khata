@@ -21,6 +21,7 @@ export interface Listener {
 
 /** Start listening. onPartial shows live text; onFinal fires once with the full sentence. */
 export function listen(opts: {
+  lang?: string;
   onPartial: (text: string) => void;
   onFinal: (text: string) => void;
   onError: (code: string) => void;
@@ -28,7 +29,7 @@ export function listen(opts: {
   const C = Ctor();
   if (!C) return null;
   const rec = new C();
-  rec.lang = "hi-IN";
+  rec.lang = opts.lang ?? "hi-IN";
   rec.interimResults = true;
   rec.continuous = true;
   rec.maxAlternatives = 1;

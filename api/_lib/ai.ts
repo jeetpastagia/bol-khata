@@ -34,7 +34,7 @@ function systemPrompt(ctx: ParseContext): string {
     .map((i) => `${i.name}${i.price_paise ? ` = ₹${i.price_paise / 100}` : ""}${i.unit ? ` (${i.unit})` : ""}`)
     .join("; ");
   return `You are the parser for "Bol Khata", a voice credit ledger (udhaar khata) for Indian chai stalls and kirana shops.
-The input is ONE transcript spoken by the shopkeeper in Hindi, English or Hinglish (Roman or Devanagari script). It may contain speech-recognition mistakes.
+The input is ONE transcript spoken by the shopkeeper in Hindi, English, Gujarati or Hinglish (Roman, Devanagari or Gujarati script). It may contain speech-recognition mistakes.
 Return ONLY a JSON object: {"actions": [Action, ...]}.
 Every Action has ALL these keys (use null when not relevant):
 type, customer, amount_rupees, item, qty, unit, for_date, note, question.

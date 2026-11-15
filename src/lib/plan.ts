@@ -5,6 +5,7 @@ import { balancePaise, bharosaScore, rupees, todaySummary, type Bharosa } from "
 import { matchCustomer, matchItem } from "./match";
 import { uuid } from "./store";
 import type { AppData, Customer, ParsedAction, SyncOp, Txn } from "./types";
+import { PHRASES, type Lang, type Say } from "./voice";
 
 export const BIG_AMOUNT_PAISE = 2000_00; // ₹2,000+ needs an explicit "Haan"
 
@@ -31,7 +32,7 @@ export type Step = MoneyStep | OrderStep;
 
 export type Instant =
   | { kind: "undo" }
-  | { kind: "say"; display: string; speech: string }
+  | { kind: "say"; display: string; speech: Say }
   | { kind: "reminders"; minPaise: number };
 
 export interface Plan {
@@ -66,7 +67,11 @@ export function buildPlan(actions: ParsedAction[], data: AppData): Plan {
           instant: {
             kind: "say",
             display: `Aaj ${rupees(s.credit)} udhaar diya, ${rupees(s.collected)} wapas aaya. Bazaar mein kul ${rupees(total)} baaki.`,
-            speech: `आज ${inr(s.credit)} रुपये उधार दिया, ${inr(s.collected)} रुपये वापस आए। बाज़ार में कुल ${inr(total)} रुपये बाकी हैं।`,
+            speech: {
+              hi: `आज ${inr(s.credit)} रुपये उधार दिया, ${inr(s.collected)} रुपये वापस आए। बाज़ार में कुल ${inr(total)} रुपये बाकी हैं।`,
+              en: `Today you gave ${inr(s.credit)} rupees on credit and got back ${inr(s.collected)} rupees. In total, ${inr(total)} rupees is due in the market.`,
+              gu: `આજે ${inr(s.credit)} રૂપિયા ઉધાર આપ્યા, ${inr(s.collected)} રૂપિયા પાછા આવ્યા. બજારમાં કુલ ${inr(total)} રૂપિયા બાકી છે.`,
+            },
           },
         };
       }
@@ -74,19 +79,26 @@ export function buildPlan(actions: ParsedAction[], data: AppData): Plan {
         const c = a.customer ? matchCustomer(a.customer, data.customers) : null;
         if (!c) {
           return { steps: [], needsExplicitYes: false, instant: {
-            kind: "say", display: `"${a.customer ?? "?"}" naam ka customer nahi mila.`, speech: `${a.customer ?? ""} नाम का ग्राहक नहीं मिला।`,
+            kind: "say", display: `"${a.customer ?? "?"}" naam ka customer nahi mila.`, speech: {
+              hi: `${a.customer ?? ""} नाम का ग्राहक नहीं मिला।`,
+              en: `I couldn't find a customer named ${a.customer ?? ""}.`,
+              gu: `${a.customer ?? ""} નામનો ગ્રાહક મળ્યો નહીં.`,
+            },
           } };
         }
         const b = balancePaise(c.id, data.transactions);
         return { steps: [], needsExplicitYes: false, instant: b > 0
-          ? { kind: "say", display: `${c.name} ke ${rupees(b)} baaki hain.`, speech: `${c.name} के ${inr(b)} रुपये बाकी हैं।` }
-          : { kind: "say", display: `${c.name} ka koi udhaar baaki nahi hai.`, speech: `${c.name} का कोई उधार बाकी नहीं है।` } };
+          ? { kind: "say", display: `${c.name} ke ${rupees(b)} baaki hain.`, speech: { hi: `${c.name} के ${inr(b)} रुपये बाकी हैं।`, en: `${c.name} owes ${inr(b)} rupees.`, gu: `${c.name} ના ${inr(b)} રૂપિયા બાકી છે.` } }
+          : { kind: "say", display: `${c.name} ka koi udhaar baaki nahi hai.`, speech: { hi: `${c.name} का कोई उधार बाकी नहीं है।`, en: `${c.name} has nothing due.`, gu: `${c.name} નું કોઈ ઉધાર બાકી નથી.` } } };
       }
       case "send_reminders":
         return { steps: [], needsExplicitYes: false, instant: { kind: "reminders", minPaise: Math.round((a.amount_rupees ?? 100) * 100) } };
       case "clarify":
         return { steps: [], needsExplicitYes: false, instant: {
-          kind: "say", display: a.question ?? "Samajh nahi aaya, phir se boliye.", speech: "समझ नहीं आया, फिर से बोलिए।",
+          kind: "say", display: a.question ?? "Samajh nahi aaya, phir se boliye.",
+          speech: a.customer && !a.amount_rupees
+            ? { hi: `${a.customer} के कितने रुपये लिखूँ?`, en: `How much should I write for ${a.customer}?`, gu: `${a.customer} ના કેટલા રૂપિયા લખું?` }
+            : PHRASES.notUnderstood,
         } };
       case "order": {
         if (!a.item || !a.qty) continue;
@@ -130,34 +142,48 @@ export function buildPlan(actions: ParsedAction[], data: AppData): Plan {
     }
   }
   if (!steps.length) {
-    return { steps: [], needsExplicitYes: false, instant: { kind: "say", display: "Samajh nahi aaya, phir se boliye.", speech: "समझ नहीं आया, फिर से बोलिए।" } };
+    return { steps: [], needsExplicitYes: false, instant: { kind: "say", display: "Samajh nahi aaya, phir se boliye.", speech: PHRASES.notUnderstood } };
   }
   const needsExplicitYes = steps.some((s) => s.kind === "money" && (s.amount_paise >= BIG_AMOUNT_PAISE || s.warning));
   return { steps, instant: null, needsExplicitYes };
 }
 
-export function planReply(plan: Plan): { display: string; speech: string } {
+export function planReply(plan: Plan): { display: string; speech: Say } {
   const disp: string[] = [];
-  const sp: string[] = [];
+  const sp: Record<Lang, string[]> = { hi: [], en: [], gu: [] };
+  const add = (hi: string, en: string, gu: string) => { sp.hi.push(hi); sp.en.push(en); sp.gu.push(gu); };
   for (const s of plan.steps) {
     if (s.kind === "money") {
+      const n = s.customer.name, amt = inr(s.amount_paise), bal = inr(Math.max(0, s.newBalance));
       if (s.type === "credit") {
-        disp.push(`${s.customer.name} ke ${rupees(s.amount_paise)} likh diye${s.isNew ? " (naya customer)" : ""}. Total ${rupees(s.newBalance)}.`);
-        sp.push(`${s.customer.name} के ${inr(s.amount_paise)} रुपये लिख दिए। कुल ${inr(s.newBalance)} रुपये।`);
+        disp.push(`${n} ke ${rupees(s.amount_paise)} likh diye${s.isNew ? " (naya customer)" : ""}. Total ${rupees(s.newBalance)}.`);
+        add(`${n} के ${amt} रुपये लिख दिए। कुल ${inr(s.newBalance)} रुपये।`,
+            `Wrote ${amt} rupees for ${n}. Total ${inr(s.newBalance)} rupees.`,
+            `${n} ના ${amt} રૂપિયા લખી દીધા. કુલ ${inr(s.newBalance)} રૂપિયા.`);
       } else {
-        disp.push(`${s.customer.name} se ${rupees(s.amount_paise)} mil gaye. Ab ${rupees(Math.max(0, s.newBalance))} baaki.`);
-        sp.push(`${s.customer.name} से ${inr(s.amount_paise)} रुपये मिल गए। अब ${inr(Math.max(0, s.newBalance))} रुपये बाकी।`);
+        disp.push(`${n} se ${rupees(s.amount_paise)} mil gaye. Ab ${rupees(Math.max(0, s.newBalance))} baaki.`);
+        add(`${n} से ${amt} रुपये मिल गए। अब ${bal} रुपये बाकी।`,
+            `Received ${amt} rupees from ${n}. ${bal} rupees left.`,
+            `${n} પાસેથી ${amt} રૂપિયા મળી ગયા. હવે ${bal} રૂપિયા બાકી.`);
       }
-      if (s.warning && s.bharosa?.level === "red") sp.push(`ध्यान दें, ${s.customer.name} का भरोसा स्कोर ${s.bharosa.score} है।`);
-      if (s.amount_paise >= BIG_AMOUNT_PAISE) sp.push(`${inr(s.amount_paise)} रुपये, पक्का?`);
+      if (s.warning && s.bharosa?.level === "red") {
+        add(`ध्यान दें, ${n} का भरोसा स्कोर ${s.bharosa.score} है।`,
+            `Careful, ${n}'s trust score is only ${s.bharosa.score}.`,
+            `ધ્યાન આપો, ${n} નો ભરોસો સ્કોર ${s.bharosa.score} છે.`);
+      }
+      if (s.amount_paise >= BIG_AMOUNT_PAISE) add(`${amt} रुपये, पक्का?`, `${amt} rupees, are you sure?`, `${amt} રૂપિયા, પાક્કું?`);
     } else {
-      const when = s.for_date === dateFor("today") ? "aaj" : "kal";
-      disp.push(`${when === "kal" ? "Kal" : "Aaj"} ke liye ${s.qty} ${s.unit ?? ""} ${s.item_name} order mein daala.`.replace(/\s+/g, " "));
-      sp.push(`${when === "kal" ? "कल" : "आज"} के लिए ${s.qty} ${s.unit ?? ""} ${s.item_name} ऑर्डर में डाल दिया।`);
+      const today = s.for_date === dateFor("today");
+      disp.push(`${today ? "Aaj" : "Kal"} ke liye ${s.qty} ${s.unit ?? ""} ${s.item_name} order mein daala.`.replace(/\s+/g, " "));
+      const u = s.unit ?? "";
+      add(`${today ? "आज" : "कल"} के लिए ${s.qty} ${u} ${s.item_name} ऑर्डर में डाल दिया।`,
+          `Added ${s.qty} ${u} ${s.item_name} to ${today ? "today's" : "tomorrow's"} order.`,
+          `${today ? "આજ" : "કાલ"} માટે ${s.qty} ${u} ${s.item_name} ઓર્ડરમાં ઉમેર્યું.`);
     }
   }
-  sp.push(plan.needsExplicitYes ? "हाँ बटन दबाइए।" : "ठीक है?");
-  return { display: disp.join(" "), speech: sp.join(" ") };
+  if (plan.needsExplicitYes) add("हाँ बटन दबाइए।", "Please press Yes to save.", "હા બટન દબાવો.");
+  else add("ठीक है?", "Is that right?", "બરાબર છે?");
+  return { display: disp.join(" "), speech: { hi: sp.hi.join(" "), en: sp.en.join(" "), gu: sp.gu.join(" ") } };
 }
 
 /** Sync operations to save a confirmed plan. Returns ops and the ids of new transactions. */
