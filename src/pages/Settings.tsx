@@ -88,7 +88,7 @@ function VoiceCard() {
   return (
     <Card className="flex flex-col gap-4 lg:row-span-2">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-lg font-bold text-chai">🗣️ Awaaz mein jawab</h3>
+        <h3 className="text-lg font-bold text-chai">Awaaz mein jawab</h3>
         <button type="button" onClick={() => update({ enabled: !v.enabled })} role="switch" aria-checked={v.enabled}
           className={`relative h-8 w-14 rounded-full transition ${v.enabled ? "bg-patti" : "bg-line"}`} aria-label="Awaaz mein jawab chalu / band">
           <span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${v.enabled ? "left-7" : "left-1"}`} />
