@@ -1,4 +1,4 @@
-// GET /api/state -> everything the app needs for the shop. Seeds demo data into an empty database.
+// GET /api/state -> everything the app needs for the shop. Fills an empty database with the starter shop.
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { db, fail, notConfigured } from "./_lib/db.js";
 import { seedData, SHOP_ID } from "../src/lib/seed.js";

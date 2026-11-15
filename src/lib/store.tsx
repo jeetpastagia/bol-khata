@@ -1,7 +1,7 @@
 // App state with offline-first sync.
 // Every change is applied on the phone first (saved in localStorage) and queued.
 // The queue is sent to /api/sync whenever the internet is available, then fresh data is pulled.
-// If the server has no database configured, the app runs in "local mode" with demo data.
+// If the server has no database configured, the app runs in "local mode" with the starter shop.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { seedData } from "./seed";
 import type { AppData, Customer, OrderItem, Shop, SyncOp, Txn } from "./types";

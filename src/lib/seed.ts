@@ -1,4 +1,4 @@
-// Demo data: one chai stall with customers, prices, suppliers and two weeks of history.
+// Starter data: one chai stall with customers, prices, suppliers and two weeks of history.
 // Used to fill an empty database on first run, and as the offline/local-mode starting point.
 import type { AppData, Customer, Txn } from "./types.js";
 

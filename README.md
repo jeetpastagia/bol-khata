@@ -5,7 +5,7 @@ The shopkeeper presses one big button and speaks in Hindi or Hinglish. Bol Khata
 
 > VibeX Codes Hackathon · Track 1: Helping Daily Workers, Small Shopkeepers (Chaiwalas) & Office Workers
 
-**Live demo:** _add your Vercel link here_ · **Demo video:** _add link_
+**Live app:** https://bol-khata-app-india.vercel.app · **Video:** _add link_
 
 ---
 
@@ -72,7 +72,7 @@ cp .env.example .env      # fill in keys (all optional to start)
 npm run dev               # http://localhost:5173  (app + API together)
 npm test
 ```
-With no keys at all the app still runs in **local mode**: demo data, offline rule parser, everything saved on the phone.
+With no keys at all the app still runs in **local mode**: starter shop data, offline rule parser, everything saved on the phone.
 
 ## Deploy (about 15 minutes)
 
@@ -99,10 +99,10 @@ git push -u origin main
 2. Under **Environment Variables**, add every key from `.env.example` that you have (at least `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and one AI key).
 3. Click **Deploy**. Open the link in **Chrome on your phone**, allow the microphone, then use **⋮ → Add to Home screen**.
 
-The first load fills the database with the demo shop "Raju Chai Stall". Open **⚙️ Settings** to check that the database shows "Supabase se juda" (connected) and to see which AI providers are active.
+The first load fills the database with the starter shop "Raju Chai Stall". Open **⚙️ Settings** to check that the database shows "Supabase se juda" (connected) and to see which AI providers are active.
 
 ## Known limits (honest list for the judges)
 - Browser speech recognition works best in **Chrome**. In other browsers, use the text box.
 - Messages are sent with WhatsApp **click-to-chat** (one tap). Fully automatic sending needs the WhatsApp Cloud API (future work).
-- One demo shop per deployment. Shopkeeper login for multiple shops is future work.
+- One shop per deployment. Shopkeeper login for multiple shops is future work.
 - Earphone media-button trigger: currently the Space key or a Bluetooth clicker that maps to a key.

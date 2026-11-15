@@ -54,7 +54,7 @@ export default function Settings() {
         </div>
         <div className="flex gap-2">
           <Btn tone="soft" onClick={() => void syncNow()}>⟳ Abhi sync</Btn>
-          {!serverReady && <Btn tone="mirchi" onClick={() => confirm("Demo data dobara shuru karein? Is phone ki entries hat jayengi.") && resetLocal()}>Demo reset</Btn>}
+          {!serverReady && <Btn tone="mirchi" onClick={() => confirm("Khata shuru se karein? Is phone ki nayi entries hat jayengi.") && resetLocal()}>Shuru se karein</Btn>}
         </div>
       </Card>
       <p className="text-center text-sm text-chai-soft lg:col-span-2">Bol Khata · bolo, aur likh gaya 🎙️</p>
