@@ -16,7 +16,9 @@ export default function Hisaab() {
   const risky = rows.filter((r) => r.b.level === "red" && r.bal > 0).length;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="@container flex flex-col gap-3">
+      <div className="grid gap-3 @3xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+      <div className="flex flex-col gap-3">
       <Card className="bg-chai text-cream">
         <div className="text-cream/80">Bazaar mein baaki</div>
         <div className="text-5xl font-extrabold text-haldi">{rupees(total)}</div>
@@ -26,6 +28,7 @@ export default function Hisaab() {
       <div className="grid grid-cols-2 gap-3">
         <Card><div className="text-chai-soft">Aaj udhaar diya</div><div className="text-3xl font-extrabold text-mirchi">{rupees(today.credit)}</div></Card>
         <Card><div className="text-chai-soft">Aaj wapas aaya</div><div className="text-3xl font-extrabold text-patti">{rupees(today.collected)}</div></Card>
+      </div>
       </div>
 
       <Card>
@@ -48,8 +51,10 @@ export default function Hisaab() {
           ))}
         </div>
       </Card>
+      </div>
 
       <h3 className="text-lg font-bold text-chai">Sabse zyada baaki</h3>
+      <div className="grid gap-3 @xl:grid-cols-2 @5xl:grid-cols-3">
       {rows.filter((r) => r.bal > 0).slice(0, 6).map(({ c, bal, b }) => (
         <div key={c.id} className="flex items-center justify-between rounded-2xl border border-line bg-white/70 p-3">
           <div>
@@ -60,6 +65,7 @@ export default function Hisaab() {
             className="rounded-2xl bg-patti px-4 py-3 font-bold text-white no-underline">📲 Yaad dilao</a>
         </div>
       ))}
+      </div>
     </div>
   );
 }

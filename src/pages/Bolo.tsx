@@ -168,10 +168,10 @@ export default function Bolo() {
   return (
     <div className="flex flex-col gap-4">
       {/* Big mic */}
-      <div className="flex flex-col items-center gap-3 pt-2">
+      <div className="flex flex-col items-center gap-3 pt-2 lg:pt-6">
         <button
           onClick={toggleMic}
-          className={`flex h-48 w-48 flex-col items-center justify-center rounded-full text-white shadow-xl transition active:scale-95 ${listening ? "mic-live bg-mirchi" : "bg-kesar"}`}
+          className={`flex h-48 w-48 lg:h-56 lg:w-56 flex-col items-center justify-center rounded-full text-white shadow-xl transition active:scale-95 ${listening ? "mic-live bg-mirchi" : "bg-kesar"}`}
           aria-label={listening ? "Bolna band karo" : "Bolo"}
         >
           <span className="text-7xl leading-none">{listening ? "⏹" : "🎙️"}</span>
@@ -296,7 +296,7 @@ export default function Bolo() {
                     className="rounded-xl bg-cream-2 px-3 py-2 font-bold text-chai"
                     onClick={() => { commit([{ table: "transactions", row: { ...t, voided: true } }]); speak("एंट्री हटा दी।"); }}
                     aria-label="Entry hatao"
-                  >↩️</button>
+                  >↶ Hatao</button>
                 )}
               </div>
             );

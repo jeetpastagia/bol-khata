@@ -24,12 +24,13 @@ export default function Khata() {
   const open = data.customers.find((c) => c.id === openId) ?? null;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex gap-2">
+    <div className="@container flex flex-col gap-3">
+      <div className="flex gap-2 @3xl:max-w-xl">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 Naam dhoondhein"
           className="min-h-12 min-w-0 flex-1 rounded-2xl border border-line bg-white px-4 text-lg" />
         <Btn tone="soft" onClick={() => setAdding(true)}>＋ Naya</Btn>
       </div>
+      <div className="grid gap-3 @2xl:grid-cols-2 @5xl:grid-cols-3">
       {rows.map(({ c, bal, b }) => (
         <button key={c.id} onClick={() => setOpenId(c.id)}
           className="flex items-center justify-between rounded-2xl border border-line bg-white/70 p-3 text-left active:bg-cream-2">
@@ -44,6 +45,7 @@ export default function Khata() {
           <div className={`text-2xl font-extrabold ${bal > 0 ? "text-mirchi" : "text-patti"}`}>{bal > 0 ? rupees(bal) : "✓"}</div>
         </button>
       ))}
+      </div>
       {open && <CustomerSheet c={open} onClose={() => setOpenId(null)} />}
       {adding && (
         <AddCustomer

@@ -63,7 +63,8 @@ export function Btn({
 }
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-2xl border border-line bg-white/70 p-4 ${className}`}>{children}</div>;
+  const hasBg = /(^|\s)bg-/.test(className);
+  return <div className={`rounded-2xl border border-line p-4 ${hasBg ? "" : "bg-white/70"} ${className}`}>{children}</div>;
 }
 
 export function timeAgo(iso: string): string {

@@ -20,6 +20,8 @@
   --color-amber-soft: #fbecc9;
 }
 
+/* Base styles live in the base layer so Tailwind utilities (e.g. text-white on links) can override them. */
+@layer base {
 html, body, #root { height: 100%; }
 body {
   overflow-x: hidden;
@@ -32,6 +34,7 @@ body {
 a { color: var(--color-kesar-dark); }
 :focus-visible { outline: 3px solid var(--color-haldi); outline-offset: 2px; }
 input, select, textarea { accent-color: var(--color-kesar); }
+}
 
 @keyframes pulse-ring {
   0% { box-shadow: 0 0 0 0 rgb(224 112 31 / 0.55); }

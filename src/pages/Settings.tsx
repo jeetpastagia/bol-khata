@@ -14,8 +14,8 @@ export default function Settings() {
   const changed = JSON.stringify(shop) !== JSON.stringify(data.shop);
 
   return (
-    <div className="flex flex-col gap-3">
-      <Card className="flex flex-col gap-3">
+    <div className="grid items-start gap-3 lg:max-w-5xl lg:grid-cols-2">
+      <Card className="flex flex-col gap-3 lg:row-span-2">
         <h3 className="text-lg font-bold text-chai">Dukaan</h3>
         <label className="flex flex-col gap-1">
           <span className="text-sm text-chai-soft">Dukaan ka naam</span>
@@ -53,11 +53,11 @@ export default function Settings() {
           <span className="inline-block rounded-full bg-patti-soft px-2 py-0.5 text-sm text-patti">offline rules</span>
         </div>
         <div className="flex gap-2">
-          <Btn tone="soft" onClick={() => void syncNow()}>🔄 Abhi sync</Btn>
+          <Btn tone="soft" onClick={() => void syncNow()}>⟳ Abhi sync</Btn>
           {!serverReady && <Btn tone="mirchi" onClick={() => confirm("Demo data dobara shuru karein? Is phone ki entries hat jayengi.") && resetLocal()}>Demo reset</Btn>}
         </div>
       </Card>
-      <p className="text-center text-sm text-chai-soft">Bol Khata · bolo, aur likh gaya 🎙️</p>
+      <p className="text-center text-sm text-chai-soft lg:col-span-2">Bol Khata · bolo, aur likh gaya 🎙️</p>
     </div>
   );
 }

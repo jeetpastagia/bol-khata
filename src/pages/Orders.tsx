@@ -33,7 +33,8 @@ export default function Orders() {
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="@container flex flex-col gap-3">
+      <div className="grid gap-3 @2xl:grid-cols-2 @5xl:grid-cols-3">
       {groups.size === 0 && (
         <Card>
           <p className="text-lg">Koi order baaki nahi.</p>
@@ -61,11 +62,12 @@ export default function Orders() {
           </Btn>
         </Card>
       ))}
+      </div>
 
-      {lastSentDate && <Btn tone="soft" onClick={repeatLast}>🔁 Pichla order kal ke liye dobara</Btn>}
+      {lastSentDate && <Btn tone="soft" className="@2xl:self-start" onClick={repeatLast}>🔁 Pichla order kal ke liye dobara</Btn>}
 
       {sent.length > 0 && (
-        <div>
+        <div className="@2xl:max-w-xl">
           <h3 className="mb-2 text-lg font-bold text-chai">Bheje gaye</h3>
           {sent.slice(0, 10).map((o) => (
             <div key={o.id} className="flex justify-between border-b border-line py-1.5 text-chai-soft">
