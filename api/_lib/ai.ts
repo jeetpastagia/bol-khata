@@ -8,7 +8,7 @@ import { z } from "zod";
 import { parseRules } from "../../src/lib/parseRules.js";
 import type { Item, ParsedAction } from "../../src/lib/types.js";
 
-const TIMEOUT_MS = 7000;
+const TIMEOUT_MS = 5000; // give up on a slow provider after 5 s and try the next one
 
 const ActionSchema = z.object({
   type: z.enum(["credit", "payment", "order", "query_balance", "undo_last", "daily_summary", "send_reminders", "clarify"]),
@@ -101,7 +101,7 @@ async function viaClaude(ctx: ParseContext): Promise<ParsedAction[]> {
 }
 
 async function viaGemini(ctx: ParseContext): Promise<ParsedAction[]> {
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const model = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
   const { signal, done } = withTimeout();
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -135,6 +135,8 @@ async function viaOpenAIStyle(url: string, key: string, model: string, ctx: Pars
         model,
         temperature: 0,
         ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
+        // gpt-oss models think before answering; "low" keeps replies under ~1 second
+        ...(model.startsWith("openai/gpt-oss") ? { reasoning_effort: "low" } : {}),
         messages: [
           { role: "system", content: systemPrompt(ctx) },
           { role: "user", content: ctx.transcript },
@@ -164,7 +166,7 @@ export const PROVIDERS: Provider[] = [
     name: "groq",
     enabled: () => !!env("GROQ_API_KEY"),
     run: (ctx) => viaOpenAIStyle("https://api.groq.com/openai/v1/chat/completions", env("GROQ_API_KEY"),
-      env("GROQ_MODEL") || "llama-3.3-70b-versatile", ctx),
+      env("GROQ_MODEL") || "openai/gpt-oss-120b", ctx),
   },
   {
     name: "openrouter",
@@ -180,9 +182,16 @@ export const PROVIDERS: Provider[] = [
   },
 ];
 
+/** AI_ORDER="groq,gemini" puts those first; providers not listed keep their default order after them. */
+function orderedProviders(): Provider[] {
+  const wanted = env("AI_ORDER").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const rank = (p: Provider) => (wanted.includes(p.name) ? wanted.indexOf(p.name) : wanted.length + PROVIDERS.indexOf(p));
+  return [...PROVIDERS].sort((a, b) => rank(a) - rank(b));
+}
+
 export async function parseWithFallback(ctx: ParseContext, items: Item[]) {
   const tried: string[] = [];
-  for (const p of PROVIDERS) {
+  for (const p of orderedProviders()) {
     if (!p.enabled()) continue;
     try {
       const actions = await p.run(ctx);
