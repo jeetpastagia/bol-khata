@@ -4,6 +4,7 @@
 The shopkeeper presses one big button and speaks in Hindi or Hinglish. Bol Khata writes the entry, speaks it back for confirmation, sends a UPI payment reminder and the supplier order on WhatsApp. No typing needed.
 
 > VibeX Codes Hackathon · Track 1: Helping Daily Workers, Small Shopkeepers (Chaiwalas) & Office Workers
+> **Team Asur Coders:** Aum Sorathiya · Jeet Pastagia · Harikrushna Ghadiya · Divyesh Shukla
 
 **Live app:** https://bol-khata-app-india.vercel.app · **Video:** _add link_
 
@@ -22,12 +23,19 @@ The shopkeeper presses one big button and speaks in Hindi or Hinglish. Bol Khata
 | "Nahi, galat hai" | Undoes the last entry (kept in history, struck through) |
 | "Aaj ka hisaab batao" | Speaks today's summary |
 | "Sabko reminder bhejo" | Lists everyone who owes money, with WhatsApp + UPI QR buttons |
+| "**Bol Khata**, Ramesh ka 40 likho" | Hands-free mode: the wake word opens the mic, no touching the phone |
 
 ### Four features that make it different
 1. **Pakka Hisaab (both sides confirm):** after each entry, one tap sends the customer a WhatsApp message with a link to their own khata page. They can press **"Galat hai"** on any wrong entry, and it shows up as disputed for the shopkeeper.
 2. **Bharosa Score:** a 0–100 trust score for each customer, based on how fast they repay, how old their dues are, credit limit and disputes. A 🔴 customer triggers a spoken warning and needs an explicit "Haan" before more credit is saved.
-3. **Hands-free and offline:** a big mic button (or the Space key / a clicker button). If the internet is off, a built-in Hindi rule parser still understands common sentences and entries sync later.
+3. **Hands-free and offline:** switch on **Hands-free mode** and just say **"Bol Khata"**; the app answers *"Haan ji, boliye"* and takes the command, and at the confirm step a spoken "haan" / "nahi" is enough. The mic button also works by tap in both modes. If the internet is off, a built-in Hindi rule parser still understands common sentences and entries sync later.
 4. **Item math:** the shopkeeper says *what* was taken, not the total.
+
+### Talks back in your language
+Every reply is spoken. **Settings → Awaaz mein jawab:**
+- **Female or male voice** (if the phone has only one voice, its pitch is adjusted).
+- **Reply language:** by default the **same language the shopkeeper spoke** (Hindi/Hinglish, English or Gujarati), or fixed to one of them.
+- **Mic language:** Hindi/Hinglish, English or Gujarati.
 
 ### Safety
 - Money is stored as whole **paise** (₹40 = 4000), never decimals.
@@ -42,7 +50,7 @@ The shopkeeper presses one big button and speaks in Hindi or Hinglish. Bol Khata
 |---|---|
 | Language | TypeScript |
 | Frontend | React 19 + Vite, Tailwind CSS v4, installable PWA (works offline) |
-| Voice | Web Speech API (`hi-IN`) for speech-to-text, `speechSynthesis` for Hindi replies |
+| Voice | Web Speech API (`hi-IN`, `en-IN`, `gu-IN`) for speech-to-text and the "Bol Khata" wake word; `speechSynthesis` replies in Hindi, English or Gujarati with a female or male voice |
 | AI understanding | Fallback chain: **Claude → Gemini → Groq → OpenRouter → Cerebras → offline rules**. Busy or rate-limited providers are skipped automatically. All AI output is checked with **Zod**. |
 | Backend | Vercel serverless functions (`/api`) |
 | Database | Supabase (PostgreSQL) |
@@ -50,7 +58,7 @@ The shopkeeper presses one big button and speaks in Hindi or Hinglish. Bol Khata
 | Matching | Fuse.js fuzzy names + a Devanagari → Roman transliterator (so "रमेश", "Rames" and "Ramesh bhai" all match Ramesh) |
 | Payments | UPI deep links + QR codes (`qrcode`) |
 | Messages | WhatsApp click-to-chat links |
-| Tests | Vitest (32 tests for Hindi numbers, transliteration, parsing, score, UPI) |
+| Tests | Vitest (48 tests: Hindi numbers, transliteration, parsing, Bharosa Score, UPI, reply language, wake word) |
 
 ```
 api/            serverless functions: parse (AI chain), state, sync, c (customer page)
@@ -105,4 +113,4 @@ The first load fills the database with the starter shop "Raju Chai Stall". Open 
 - Browser speech recognition works best in **Chrome**. In other browsers, use the text box.
 - Messages are sent with WhatsApp **click-to-chat** (one tap). Fully automatic sending needs the WhatsApp Cloud API (future work).
 - One shop per deployment. Shopkeeper login for multiple shops is future work.
-- Earphone media-button trigger: currently the Space key or a Bluetooth clicker that maps to a key.
+- Hands-free listening works while the app is open on screen (browsers cannot listen in the background). Android Chrome plays a short beep each time the mic restarts.
