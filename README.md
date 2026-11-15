@@ -115,10 +115,10 @@ The first load fills the database with the starter shop "Raju Chai Stall". Open 
 
 | Member | GitHub | Role |
 |---|---|---|
-| Jeet Pastagia | [@jeetpastagia](https://github.com/jeetpastagia) | TBD |
-| Aum Sorathiya | [@AumSorathiya](https://github.com/AumSorathiya) | TBD |
-| Harikrushna Ghadiya | [@HariKrushna-Gadhiya](https://github.com/HariKrushna-Gadhiya) | TBD |
-| Divyesh Shukla | _GitHub link coming soon_ | TBD |
+| Jeet Pastagia | [@jeetpastagia](https://github.com/jeetpastagia) | Back-end |
+| Aum Sorathiya | [@AumSorathiya](https://github.com/AumSorathiya) | Front-end |
+| Harikrushna Ghadiya | [@HariKrushna-Gadhiya](https://github.com/HariKrushna-Gadhiya) | Testing |
+| Divyesh Shukla | _GitHub link coming soon_ | Testing |
 
 ## Known limits (honest list for the judges)
 - Browser speech recognition works best in **Chrome**. In other browsers, use the text box.
