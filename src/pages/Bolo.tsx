@@ -5,9 +5,9 @@ import { waLink, upiLink } from "../lib/links";
 import { pakkaHisaabText, reminderText } from "../lib/messages";
 import { parseRules } from "../lib/parseRules";
 import { buildPlan, dateFor, planReply, planToOps, type Plan } from "../lib/plan";
-import { listen, listenLoop, speechSupported, stopSpeaking, type Listener } from "../lib/speech";
+import { listen, listenLoop, speechSupported, type Listener } from "../lib/speech";
 import { afterWakeWord, yesOrNo } from "../lib/wake";
-import { BCP47, PHRASES, isAppSpeaking, loadVoiceSettings, replyLangFor, speakSay, type Lang } from "../lib/voice";
+import { BCP47, PHRASES, isAppSpeaking, loadVoiceSettings, replyLangFor, speakSay, stopAllSpeech, type Lang } from "../lib/voice";
 import { useStore } from "../lib/store";
 import type { ParsedAction, Txn } from "../lib/types";
 
@@ -134,7 +134,7 @@ export default function Bolo() {
   }, [confirm, undoLast]);
 
   const startListening = useCallback(() => {
-    stopSpeaking();
+    stopAllSpeech();
     clearAuto();
     if (!speechSupported()) {
       setPhase({ name: "done", display: "Is browser mein awaaz support nahi hai. Chrome kholiye ya neeche likhiye.", txnIds: [], isError: true });
@@ -342,7 +342,7 @@ export default function Bolo() {
             </div>
           )}
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <Btn tone="mirchi" onClick={() => { clearAuto(); stopSpeaking(); setPhase({ name: "idle" }); }}>❌ Nahi</Btn>
+            <Btn tone="mirchi" onClick={() => { clearAuto(); stopAllSpeech(); setPhase({ name: "idle" }); }}>❌ Nahi</Btn>
             <Btn tone="patti" onClick={() => confirm(phase)}>✅ Haan</Btn>
           </div>
           <p className="mt-2 text-center text-sm text-chai-soft">

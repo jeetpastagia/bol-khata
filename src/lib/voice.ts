@@ -42,6 +42,8 @@ export function detectLang(text: string): Lang {
 
 export function replyLangFor(transcript: string, s = loadVoiceSettings()): Lang {
   if (s.replyLang !== "auto") return s.replyLang;
+  // Mic set to English/Gujarati: reply in that language (Chrome may write the words in another script)
+  if (s.inputLang !== "hi") return s.inputLang;
   return transcript.trim() ? detectLang(transcript) : s.inputLang;
 }
 
@@ -69,40 +71,107 @@ export function pickVoice(lang: Lang, gender: Gender): { voice: SpeechSynthesisV
   const exact = list.find((v) => want.test(v.name) && !avoid.test(v.name));
   if (exact) return { voice: exact, pitch: 1 };
   const neutral = list.find((v) => !avoid.test(v.name)) ?? list[0];
-  return { voice: neutral, pitch: gender === "male" ? 0.72 : 1.12 };
+  return { voice: neutral, pitch: gender === "male" ? 0.6 : 1.12 };
 }
 
 export function hasVoice(lang: Lang): boolean {
   return voicesFor(lang).length > 0;
 }
 
-/** Speak a reply in the chosen language. Falls back to Hindi, then English, if the phone lacks that voice. */
+/** True when this device has no voice for the language, or no real voice of the chosen gender. */
+export function needsCloudVoice(lang: Lang, gender: Gender): boolean {
+  if (!hasVoice(lang)) return true;
+  return pickVoice(lang, gender).pitch !== 1;
+}
+
+let lastSpeechEnd = 0;
+let lastText = "";
+let lastTextAt = 0;
+let speakToken = 0;
+let currentAudio: HTMLAudioElement | null = null;
+const audioCache = new Map<string, string>(); // tts url -> object URL
+
+/** Stop every reply that is playing or about to play. */
+export function stopAllSpeech() {
+  speakToken++;
+  try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  lastSpeechEnd = Date.now();
+}
+
+/** True while the app is talking (and just after), so hands-free mode doesn't hear its own voice. */
+export function isAppSpeaking(): boolean {
+  return !!window.speechSynthesis?.speaking || (!!currentAudio && !currentAudio.paused) || Date.now() - lastSpeechEnd < 900;
+}
+
+/** Device voice. Falls back to Hindi, then English, if the device lacks the language. */
+function speakOnDevice(say: Say, lang: Lang, gender: Gender, token: number) {
+  const synth = window.speechSynthesis;
+  if (!synth) { lastSpeechEnd = Date.now(); return; }
+  const use = ([lang, "hi", "en"] as Lang[]).find((l) => hasVoice(l)) ?? lang;
+  const { voice, pitch } = pickVoice(use, gender);
+  const u = new SpeechSynthesisUtterance(say[use]);
+  u.lang = BCP47[use];
+  if (voice) u.voice = voice;
+  u.pitch = pitch;
+  u.rate = gender === "male" && pitch !== 1 ? 0.95 : 1.02;
+  u.onend = u.onerror = () => { if (token === speakToken) lastSpeechEnd = Date.now(); };
+  // Chrome on Android can drop or double an utterance spoken in the same tick as cancel()
+  setTimeout(() => { if (token === speakToken) synth.speak(u); }, 60);
+}
+
+/** Natural voice from the server (Gemini text-to-speech), cached per sentence. */
+async function speakFromCloud(text: string, lang: Lang, gender: Gender, token: number) {
+  const url = `/api/tts?t=${encodeURIComponent(text)}&l=${lang}&g=${gender}`;
+  let src = audioCache.get(url);
+  if (!src) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 9000);
+    try {
+      const r = await fetch(url, { signal: ctrl.signal });
+      if (!r.ok) throw new Error(String(r.status));
+      src = URL.createObjectURL(await r.blob());
+    } finally {
+      clearTimeout(timer);
+    }
+    audioCache.set(url, src);
+    if (audioCache.size > 60) {
+      const oldest = audioCache.keys().next().value as string;
+      URL.revokeObjectURL(audioCache.get(oldest)!);
+      audioCache.delete(oldest);
+    }
+  }
+  if (token !== speakToken) return; // a newer reply took over
+  const a = new Audio(src);
+  currentAudio = a;
+  a.onended = a.onerror = () => { if (token === speakToken) { lastSpeechEnd = Date.now(); currentAudio = null; } };
+  await a.play();
+}
+
+/**
+ * Speak a reply. Uses the device voice when it has the right language and gender (instant, offline);
+ * otherwise a natural voice from the server; if that fails, the device voice anyway.
+ */
 export function speakSay(say: Say, lang: Lang, s = loadVoiceSettings()) {
   if (!s.enabled) return;
   try {
-    const synth = window.speechSynthesis;
-    if (!synth) return;
-    const order: Lang[] = [lang, "hi", "en"];
-    const use = order.find((l) => hasVoice(l)) ?? lang;
-    const { voice, pitch } = pickVoice(use, s.gender);
-    const text = say[use];
+    const text = say[lang];
     // Never say the same thing twice in a row (duplicate recognition results on Android)
-    const key = `${s.gender}|${text}`;
+    const key = `${s.gender}|${lang}|${text}`;
     if (key === lastText && Date.now() - lastTextAt < 2500) return;
     lastText = key;
     lastTextAt = Date.now();
-    // Only one reply at a time: stop anything still playing or queued
-    synth.cancel();
-    const token = ++speakToken;
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = BCP47[use];
-    if (voice) u.voice = voice;
-    u.pitch = pitch;
-    u.rate = 1.02;
-    lastSpeechEnd = Date.now() + 60_000; // until onend fires
-    u.onend = u.onerror = () => { if (token === speakToken) lastSpeechEnd = Date.now(); };
-    // Chrome on Android can drop or double an utterance spoken in the same tick as cancel()
-    setTimeout(() => { if (token === speakToken) synth.speak(u); }, 60);
+    // Only one reply at a time
+    stopAllSpeech();
+    const token = speakToken;
+    lastSpeechEnd = Date.now() + 60_000; // until playback ends
+    if (navigator.onLine && needsCloudVoice(lang, s.gender)) {
+      speakFromCloud(text, lang, s.gender, token).catch(() => {
+        if (token === speakToken) speakOnDevice(say, lang, s.gender, token);
+      });
+    } else {
+      speakOnDevice(say, lang, s.gender, token);
+    }
   } catch {
     /* speech output is optional */
   }
@@ -111,15 +180,6 @@ export function speakSay(say: Say, lang: Lang, s = loadVoiceSettings()) {
 if (typeof window !== "undefined" && window.speechSynthesis) {
   // Voices load asynchronously in Chrome; touching the list early makes them available sooner.
   window.speechSynthesis.getVoices();
-}
-
-let lastSpeechEnd = 0;
-let lastText = "";
-let lastTextAt = 0;
-let speakToken = 0;
-/** True while the app is talking (and just after), so hands-free mode doesn't hear its own voice. */
-export function isAppSpeaking(): boolean {
-  return !!window.speechSynthesis?.speaking || Date.now() - lastSpeechEnd < 900;
 }
 
 // ---------- Fixed phrases ----------

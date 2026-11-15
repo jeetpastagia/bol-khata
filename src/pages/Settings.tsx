@@ -3,7 +3,7 @@ import { Btn, Card } from "../components/ui";
 import { rupees } from "../lib/ledger";
 import { useStore } from "../lib/store";
 import {
-  LANG_LABEL, PHRASES, hasVoice, loadVoiceSettings, pickVoice, saveVoiceSettings, speakSay,
+  LANG_LABEL, PHRASES, hasVoice, loadVoiceSettings, needsCloudVoice, pickVoice, saveVoiceSettings, speakSay,
   type Gender, type Lang, type ReplyLang, type VoiceSettings,
 } from "../lib/voice";
 
@@ -83,7 +83,6 @@ function VoiceCard() {
   const testLang: Lang = v.replyLang === "auto" ? v.inputLang : v.replyLang;
   const test = (s = v) => speakSay(PHRASES.test, s.replyLang === "auto" ? s.inputLang : s.replyLang, { ...s, enabled: true });
   const realVoice = hasVoice(testLang) ? pickVoice(testLang, v.gender) : null;
-  const fallback = (["hi", "en"] as Lang[]).find((l) => l !== testLang && hasVoice(l));
 
   return (
     <Card className="flex flex-col gap-4 lg:row-span-2">
@@ -122,13 +121,9 @@ function VoiceCard() {
 
         <Btn tone="soft" onClick={() => test()}>▶ Awaaz sunein</Btn>
         <p className="text-sm text-chai-soft">
-          {(window.speechSynthesis?.getVoices().length ?? 0) === 0
-            ? "Female ya male awaaz chuniye, phir ▶ dabakar sunein."
-            : !hasVoice(testLang)
-            ? `Is phone mein ${LANG_LABEL[testLang]} awaaz nahi mili${fallback ? `, isliye ${LANG_LABEL[fallback]} mein bolega` : ""}. Phone settings → Text-to-speech mein bhasha jod sakte hain.`
-            : realVoice && realVoice.pitch !== 1
-              ? `Is phone mein alag ${v.gender === "male" ? "male" : "female"} awaaz nahi hai, isliye awaaz ${v.gender === "male" ? "bhaari" : "patli"} kar di gayi hai.`
-              : `Awaaz: ${realVoice?.voice?.name ?? "phone ki default"}`}
+          {needsCloudVoice(testLang, v.gender)
+            ? `Is device mein ${LANG_LABEL[testLang]}${v.gender === "male" ? " male" : ""} awaaz nahi hai, isliye internet se natural awaaz aayegi (pehli baar 2–4 second lag sakte hain).`
+            : `Awaaz: ${realVoice?.voice?.name ?? "phone ki default"}`}
         </p>
       </div>
     </Card>
