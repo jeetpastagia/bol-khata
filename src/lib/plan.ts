@@ -1,0 +1,189 @@
+// Turns parsed actions into a concrete plan (matched customers, new balances, warnings),
+// the replies to show and speak, and the sync operations to save after confirmation.
+import { titleCase } from "./hindi";
+import { balancePaise, bharosaScore, rupees, todaySummary, type Bharosa } from "./ledger";
+import { matchCustomer, matchItem } from "./match";
+import { uuid } from "./store";
+import type { AppData, Customer, ParsedAction, SyncOp, Txn } from "./types";
+
+export const BIG_AMOUNT_PAISE = 2000_00; // ₹2,000+ needs an explicit "Haan"
+
+export interface MoneyStep {
+  kind: "money";
+  type: "credit" | "payment";
+  customer: Customer;
+  isNew: boolean;
+  amount_paise: number;
+  note: string | null;
+  newBalance: number;
+  bharosa: Bharosa | null;
+  warning: string | null;
+}
+export interface OrderStep {
+  kind: "order";
+  item_id: string | null;
+  item_name: string;
+  qty: number;
+  unit: string | null;
+  for_date: string;
+}
+export type Step = MoneyStep | OrderStep;
+
+export type Instant =
+  | { kind: "undo" }
+  | { kind: "say"; display: string; speech: string }
+  | { kind: "reminders"; minPaise: number };
+
+export interface Plan {
+  steps: Step[];
+  instant: Instant | null;
+  needsExplicitYes: boolean;
+}
+
+const inr = (paise: number) => String(Math.round(paise / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+export function dateFor(when: "today" | "tomorrow" | null): string {
+  const d = new Date();
+  if (when !== "today") d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function buildPlan(actions: ParsedAction[], data: AppData): Plan {
+  const steps: Step[] = [];
+  const newCustomers = new Map<string, Customer>();
+  // Running balances so "Ramesh ka 40 aur Ramesh ka 20" adds up correctly
+  const running = new Map<string, number>();
+
+  for (const a of actions) {
+    switch (a.type) {
+      case "undo_last":
+        return { steps: [], instant: { kind: "undo" }, needsExplicitYes: false };
+      case "daily_summary": {
+        const s = todaySummary(data.transactions);
+        const total = data.customers.reduce((sum, c) => sum + Math.max(0, balancePaise(c.id, data.transactions)), 0);
+        return {
+          steps: [], needsExplicitYes: false,
+          instant: {
+            kind: "say",
+            display: `Aaj ${rupees(s.credit)} udhaar diya, ${rupees(s.collected)} wapas aaya. Bazaar mein kul ${rupees(total)} baaki.`,
+            speech: `आज ${inr(s.credit)} रुपये उधार दिया, ${inr(s.collected)} रुपये वापस आए। बाज़ार में कुल ${inr(total)} रुपये बाकी हैं।`,
+          },
+        };
+      }
+      case "query_balance": {
+        const c = a.customer ? matchCustomer(a.customer, data.customers) : null;
+        if (!c) {
+          return { steps: [], needsExplicitYes: false, instant: {
+            kind: "say", display: `"${a.customer ?? "?"}" naam ka customer nahi mila.`, speech: `${a.customer ?? ""} नाम का ग्राहक नहीं मिला।`,
+          } };
+        }
+        const b = balancePaise(c.id, data.transactions);
+        return { steps: [], needsExplicitYes: false, instant: b > 0
+          ? { kind: "say", display: `${c.name} ke ${rupees(b)} baaki hain.`, speech: `${c.name} के ${inr(b)} रुपये बाकी हैं।` }
+          : { kind: "say", display: `${c.name} ka koi udhaar baaki nahi hai.`, speech: `${c.name} का कोई उधार बाकी नहीं है।` } };
+      }
+      case "send_reminders":
+        return { steps: [], needsExplicitYes: false, instant: { kind: "reminders", minPaise: Math.round((a.amount_rupees ?? 100) * 100) } };
+      case "clarify":
+        return { steps: [], needsExplicitYes: false, instant: {
+          kind: "say", display: a.question ?? "Samajh nahi aaya, phir se boliye.", speech: "समझ नहीं आया, फिर से बोलिए।",
+        } };
+      case "order": {
+        if (!a.item || !a.qty) continue;
+        const item = matchItem(a.item, data.items);
+        steps.push({
+          kind: "order", item_id: item?.id ?? null, item_name: item?.name ?? titleCase(a.item),
+          qty: a.qty, unit: a.unit ?? item?.unit ?? null, for_date: dateFor(a.for_date),
+        });
+        continue;
+      }
+      case "credit":
+      case "payment": {
+        if (!a.customer || !a.amount_rupees || a.amount_rupees <= 0) continue;
+        const key = a.customer.trim().toLowerCase();
+        let customer = matchCustomer(a.customer, data.customers) ?? newCustomers.get(key) ?? null;
+        let isNew = false;
+        if (!customer) {
+          isNew = true;
+          customer = {
+            id: uuid(), name: titleCase(a.customer.trim()), aliases: [], phone: null, credit_limit_paise: null,
+            view_token: uuid(), created_at: new Date().toISOString(),
+          };
+          newCustomers.set(key, customer);
+        }
+        const amount = Math.round(a.amount_rupees * 100);
+        const before = running.get(customer.id) ?? balancePaise(customer.id, data.transactions);
+        const newBalance = before + (a.type === "credit" ? amount : -amount);
+        running.set(customer.id, newBalance);
+        const bharosa = isNew ? null : bharosaScore(customer, data.transactions);
+        let warning: string | null = null;
+        if (a.type === "credit" && bharosa && bharosa.level === "red") {
+          warning = `Dhyan dein: Bharosa score ${bharosa.score}. ${bharosa.reasons[0] ?? ""}`.trim();
+        } else if (a.type === "credit" && customer.credit_limit_paise && newBalance > customer.credit_limit_paise) {
+          warning = `Udhaar limit ${rupees(customer.credit_limit_paise)} se zyada ho jayega.`;
+        } else if (a.type === "payment" && newBalance < 0) {
+          warning = `Yeh baaki se ${rupees(-newBalance)} zyada hai (advance).`;
+        }
+        steps.push({ kind: "money", type: a.type, customer, isNew, amount_paise: amount, note: a.note, newBalance, bharosa, warning });
+        continue;
+      }
+    }
+  }
+  if (!steps.length) {
+    return { steps: [], needsExplicitYes: false, instant: { kind: "say", display: "Samajh nahi aaya, phir se boliye.", speech: "समझ नहीं आया, फिर से बोलिए।" } };
+  }
+  const needsExplicitYes = steps.some((s) => s.kind === "money" && (s.amount_paise >= BIG_AMOUNT_PAISE || s.warning));
+  return { steps, instant: null, needsExplicitYes };
+}
+
+export function planReply(plan: Plan): { display: string; speech: string } {
+  const disp: string[] = [];
+  const sp: string[] = [];
+  for (const s of plan.steps) {
+    if (s.kind === "money") {
+      if (s.type === "credit") {
+        disp.push(`${s.customer.name} ke ${rupees(s.amount_paise)} likh diye${s.isNew ? " (naya customer)" : ""}. Total ${rupees(s.newBalance)}.`);
+        sp.push(`${s.customer.name} के ${inr(s.amount_paise)} रुपये लिख दिए। कुल ${inr(s.newBalance)} रुपये।`);
+      } else {
+        disp.push(`${s.customer.name} se ${rupees(s.amount_paise)} mil gaye. Ab ${rupees(Math.max(0, s.newBalance))} baaki.`);
+        sp.push(`${s.customer.name} से ${inr(s.amount_paise)} रुपये मिल गए। अब ${inr(Math.max(0, s.newBalance))} रुपये बाकी।`);
+      }
+      if (s.warning && s.bharosa?.level === "red") sp.push(`ध्यान दें, ${s.customer.name} का भरोसा स्कोर ${s.bharosa.score} है।`);
+      if (s.amount_paise >= BIG_AMOUNT_PAISE) sp.push(`${inr(s.amount_paise)} रुपये, पक्का?`);
+    } else {
+      const when = s.for_date === dateFor("today") ? "aaj" : "kal";
+      disp.push(`${when === "kal" ? "Kal" : "Aaj"} ke liye ${s.qty} ${s.unit ?? ""} ${s.item_name} order mein daala.`.replace(/\s+/g, " "));
+      sp.push(`${when === "kal" ? "कल" : "आज"} के लिए ${s.qty} ${s.unit ?? ""} ${s.item_name} ऑर्डर में डाल दिया।`);
+    }
+  }
+  sp.push(plan.needsExplicitYes ? "हाँ बटन दबाइए।" : "ठीक है?");
+  return { display: disp.join(" "), speech: sp.join(" ") };
+}
+
+/** Sync operations to save a confirmed plan. Returns ops and the ids of new transactions. */
+export function planToOps(plan: Plan, transcript: string): { ops: SyncOp[]; txnIds: string[] } {
+  const ops: SyncOp[] = [];
+  const txnIds: string[] = [];
+  const addedCustomers = new Set<string>();
+  const now = new Date().toISOString();
+  for (const s of plan.steps) {
+    if (s.kind === "money") {
+      if (s.isNew && !addedCustomers.has(s.customer.id)) {
+        addedCustomers.add(s.customer.id);
+        ops.push({ table: "customers", row: { ...s.customer } });
+      }
+      const txn: Txn = {
+        id: uuid(), customer_id: s.customer.id, type: s.type, amount_paise: s.amount_paise,
+        note: s.note, transcript: transcript.slice(0, 500), voided: false, disputed: false, created_at: now,
+      };
+      txnIds.push(txn.id);
+      ops.push({ table: "transactions", row: { ...txn } });
+    } else {
+      ops.push({ table: "order_items", row: {
+        id: uuid(), item_id: s.item_id, item_name: s.item_name, qty: s.qty, unit: s.unit,
+        for_date: s.for_date, status: "pending", transcript: transcript.slice(0, 500), created_at: now,
+      } });
+    }
+  }
+  return { ops, txnIds };
+}

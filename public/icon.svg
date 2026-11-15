@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#5a3620"/>
+  <!-- steam -->
+  <path d="M206 92c-22 30 22 46 0 78M256 80c-22 30 22 46 0 78M306 92c-22 30 22 46 0 78" fill="none" stroke="#f2b33d" stroke-width="18" stroke-linecap="round"/>
+  <!-- cup (kulhad) -->
+  <path d="M136 196h240l-26 200a36 36 0 0 1-36 32H198a36 36 0 0 1-36-32z" fill="#e0701f"/>
+  <path d="M136 196h240" stroke="#fbf4e8" stroke-width="22" stroke-linecap="round"/>
+  <!-- mic -->
+  <rect x="226" y="236" width="60" height="104" rx="30" fill="#fbf4e8"/>
+  <path d="M206 312a50 50 0 0 0 100 0M256 362v30" fill="none" stroke="#fbf4e8" stroke-width="16" stroke-linecap="round"/>
+</svg>

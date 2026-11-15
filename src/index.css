@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+/* Bol Khata palette: chai stall colours. No blue / violet anywhere. */
+@theme {
+  --font-sans: "Mukta", "Nirmala UI", "Segoe UI", system-ui, sans-serif;
+  --color-ink: #2b1a10;        /* deep tea brown - text */
+  --color-chai: #5a3620;       /* brewed chai - headers */
+  --color-chai-soft: #8a5a3b;  /* milky chai - muted text */
+  --color-cream: #fbf4e8;      /* page background */
+  --color-cream-2: #f3e6cf;    /* cards, chips */
+  --color-line: #e4d2b4;       /* borders */
+  --color-kesar: #e0701f;      /* saffron - primary action */
+  --color-kesar-dark: #b8561a;
+  --color-haldi: #f2b33d;      /* turmeric - highlights */
+  --color-patti: #2f7d4f;      /* tea leaf green - success / paid */
+  --color-patti-soft: #e3f0e6;
+  --color-mirchi: #c23a2b;     /* chilli red - danger / owed */
+  --color-mirchi-soft: #f8e1dc;
+  --color-amber: #c47c0e;
+  --color-amber-soft: #fbecc9;
+}
+
+html, body, #root { height: 100%; }
+body {
+  overflow-x: hidden;
+  margin: 0;
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+a { color: var(--color-kesar-dark); }
+:focus-visible { outline: 3px solid var(--color-haldi); outline-offset: 2px; }
+input, select, textarea { accent-color: var(--color-kesar); }
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgb(224 112 31 / 0.55); }
+  100% { box-shadow: 0 0 0 28px rgb(224 112 31 / 0); }
+}
+.mic-live { animation: pulse-ring 1.2s ease-out infinite; }
+
+@keyframes countdown { from { width: 100%; } to { width: 0%; } }
+.countdown-bar { animation: countdown linear forwards; }
+
+@keyframes rise { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+.rise { animation: rise 0.22s ease-out; }
