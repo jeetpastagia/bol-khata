@@ -154,7 +154,18 @@ export default function Bolo() {
   }, [handleTranscript]);
 
   const toggleMic = useCallback(() => {
-    if (handsFreeRef.current) { wakeNowRef.current(); return; }
+    if (handsFreeRef.current) {
+      // Hands-free on: tap = same as saying "Bol Khata"; tap "Bas" again = finish now with what was heard
+      if (awaitingRef.current) {
+        const ph = phaseRef.current;
+        stopAwaiting();
+        const heard = ph.name === "listening" ? ph.partial.trim() : "";
+        if (heard) void handleRef.current(heard); else setPhase({ name: "idle" });
+        return;
+      }
+      wakeNowRef.current();
+      return;
+    }
     if (listener.current) { listener.current.stop(); return; }
     startListening();
   }, [startListening]);
@@ -274,7 +285,7 @@ export default function Bolo() {
         </button>
         <p className="text-center text-chai-soft">
           {handsFree
-            ? listening ? "Haan ji, boliye…" : "Bas boliye: “Bol Khata”, phir apni baat"
+            ? listening ? "Haan ji, boliye… (khatam ho to 'Bas' dabaiye)" : "“Bol Khata” boliye ya mic dabaiye"
             : listening ? "Sun raha hoon… bolke 'Bas' dabaiye" : "Dabaiye aur Hindi mein boliye"}
         </p>
         <button type="button" role="switch" aria-checked={handsFree} onClick={() => setHandsFree((h) => !h)}
@@ -283,8 +294,8 @@ export default function Bolo() {
             <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${handsFree ? "left-[1.4rem]" : "left-0.5"}`} />
           </span>
           <span className="flex flex-col">
-            <span className="font-bold text-chai">Haath-free mode{handsFree && <span className="ml-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-patti align-middle" />}</span>
-            <span className="text-sm text-chai-soft">{handsFree ? "Sun raha hai… “Bol Khata” bolkar shuru karein" : "“Bol Khata” bolo, mic apne aap khulega"}</span>
+            <span className="font-bold text-chai">Hands-free mode{handsFree && <span className="ml-2 inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-patti align-middle" />}</span>
+            <span className="text-sm text-chai-soft">{handsFree ? "Sun raha hai… “Bol Khata” boliye ya mic dabaiye" : "“Bol Khata” bolo, mic apne aap khulega"}</span>
           </span>
         </button>
       </div>
