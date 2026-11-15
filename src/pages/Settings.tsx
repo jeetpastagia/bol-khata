@@ -122,7 +122,9 @@ function VoiceCard() {
 
         <Btn tone="soft" onClick={() => test()}>▶ Awaaz sunein</Btn>
         <p className="text-sm text-chai-soft">
-          {!hasVoice(testLang)
+          {(window.speechSynthesis?.getVoices().length ?? 0) === 0
+            ? "Female ya male awaaz chuniye, phir ▶ dabakar sunein."
+            : !hasVoice(testLang)
             ? `Is phone mein ${LANG_LABEL[testLang]} awaaz nahi mili${fallback ? `, isliye ${LANG_LABEL[fallback]} mein bolega` : ""}. Phone settings → Text-to-speech mein bhasha jod sakte hain.`
             : realVoice && realVoice.pitch !== 1
               ? `Is phone mein alag ${v.gender === "male" ? "male" : "female"} awaaz nahi hai, isliye awaaz ${v.gender === "male" ? "bhaari" : "patli"} kar di gayi hai.`
